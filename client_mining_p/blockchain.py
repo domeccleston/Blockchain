@@ -6,6 +6,7 @@ from uuid import uuid4
 from flask import Flask, jsonify, request
 
 DIFFICULTY = 6
+coins = 0
 
 class Blockchain(object):
     def __init__(self):
@@ -125,13 +126,19 @@ node_identifier = str(uuid4()).replace('-', '')
 blockchain = Blockchain()
 
 
-@app.route('/mine', methods=['GET'])
+@app.route('/mine', methods=['POST'])
 def mine():
-    # Run the proof of work algorithm to get the next proof
-    proof = blockchain.proof_of_work()
-    # Forge the new Block by adding it to the chain with the proof
+    data = request.get_json()
+    if not data['proof'] or not data['id']:
+        return jsonify({ "message": "Must supply proof and ID fields"}), 400
+
+    proof = data['proof']
     previous_hash = blockchain.hash(blockchain.last_block)
-    block = blockchain.new_block(proof, previous_hash)
+    # check if previous hash is valid
+    if not blockchain.valid_proof(previous_hash, proof):
+        return jsonify({ "message": "Previous proof is invalid"}), 400
+    else:
+        block = blockchain.new_block(proof, previous_hash)
     response = {
         { "block": block }
     }
